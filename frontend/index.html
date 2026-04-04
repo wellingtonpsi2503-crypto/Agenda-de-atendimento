@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Online | Francisco Wellington CR</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #07141c;
+            --bg-soft: #0b1a24;
+            --panel: rgba(7, 20, 28, 0.78);
+            --panel-strong: rgba(9, 22, 31, 0.92);
+            --text: #f6f0e3;
+            --muted: rgba(214, 221, 228, 0.82);
+            --muted-soft: rgba(214, 221, 228, 0.62);
+            --gold: #dfbe6f;
+            --gold-strong: #d6a64a;
+            --gold-soft: rgba(223, 190, 111, 0.12);
+            --line: rgba(255, 255, 255, 0.08);
+            --line-gold: rgba(223, 190, 111, 0.14);
+            --success: #68D391;
+            --error: #FC8181;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(223, 190, 111, 0.09), transparent 28%),
+                radial-gradient(circle at 85% 15%, rgba(223, 190, 111, 0.05), transparent 18%),
+                linear-gradient(180deg, #07141c 0%, #08111a 100%);
+            color: var(--text);
+            padding: 28px 18px 48px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 78% 7%, rgba(223, 190, 111, 0.16), rgba(223, 190, 111, 0.08) 14%, transparent 34%),
+                radial-gradient(circle at 73% 2%, rgba(223, 190, 111, 0.10), transparent 20%),
+                url('logo-wellington.png') right 4vw top -72px / min(58vw, 760px) no-repeat;
+            opacity: 0.072;
+            filter: blur(0.9px) drop-shadow(0 0 44px rgba(223, 190, 111, 0.24));
+            pointer-events: none;
+            z-index: 0;
+            transform: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 22%, rgba(7, 20, 28, 0.22) 55%, rgba(7, 20, 28, 0.58) 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero {
+            margin-bottom: 36px;
+            padding-top: 12px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            color: var(--gold);
+            font-size: 12px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 34px;
+            height: 1px;
+            background: rgba(223, 190, 111, 0.5);
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.4rem, 5vw, 4.1rem);
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+            margin-bottom: 14px;
+            color: var(--text);
+        }
+
+        .subtitle {
+            max-width: 760px;
+            color: var(--muted);
+            font-size: 1.04rem;
+            line-height: 1.8;
+            margin-bottom: 16px;
+        }
+
+        .intro-note {
+            max-width: 760px;
+            color: var(--muted-soft);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .steps {
+            display: grid;
+            gap: 24px;
+        }
+
+        .step {
+            position: relative;
+            background: linear-gradient(180deg, rgba(8, 18, 26, 0.94), rgba(5, 13, 19, 0.9));
+            border: 1px solid var(--line-gold);
+            border-radius: 28px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+            overflow: hidden;
+        }
+
+        .step::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 28%);
+            pointer-events: none;
+        }
+
+        .step.active {
+            border-color: rgba(223, 190, 111, 0.28);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(223, 190, 111, 0.07) inset;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .step-number {
+            flex: 0 0 40px;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            background: rgba(223, 190, 111, 0.12);
+            border: 1px solid rgba(223, 190, 111, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 15px;
+            box-shadow: 0 0 0 8px rgba(223, 190, 111, 0.03);
+        }
+
+        .step-heading {
+            display: grid;
+            gap: 5px;
+        }
+
+        .step-title {
+            font-size: 1.34rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .step-description {
+            color: var(--muted-soft);
+            font-size: 0.94rem;
+            line-height: 1.6;
+        }
+
+        .calendar-groups {
+            display: grid;
+            gap: 22px;
+            width: 100%;
+        }
+
+        .calendar-context {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: -2px 0 16px;
+            color: var(--gold);
+            font-size: 0.84rem;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .calendar-context::before {
+            content: "";
+            width: 24px;
+            height: 1px;
+            background: rgba(223, 190, 111, 0.42);
+        }
+
+        .calendar-month-block {
+            display: block;
+            width: 100%;
+        }
+
+        .calendar-month-label {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            margin: 0 0 12px 0;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(223, 190, 111, 0.08);
+            border: 1px solid rgba(223, 190, 111, 0.16);
+            color: var(--text);
+            font-size: 0.86rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .calendar-month-days {
+            display: grid;
+            width: 100%;
+            grid-template-columns: repeat(auto-fill, minmax(92px, 92px));
+            justify-content: start;
+            gap: 12px;
+        }
+
+        .day-button,
+        .time-button {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            cursor: pointer;
+            transition: all 0.22s ease;
+            color: var(--text);
+            position: relative;
+        }
+
+        .day-button {
+            border-radius: 16px;
+            padding: 16px 10px;
+            font-size: 14px;
+            text-align: center;
+            min-height: 88px;
+        }
+
+        .day-button:hover:not(:disabled),
+        .time-button:hover:not(:disabled) {
+            background: rgba(223, 190, 111, 0.08);
+            border-color: rgba(223, 190, 111, 0.28);
+            transform: translateY(-2px);
+        }
+
+        .day-button.selected {
+            background: linear-gradient(180deg, rgba(223, 190, 111, 0.16), rgba(223, 190, 111, 0.10));
+            border-color: var(--gold);
+            box-shadow: 0 12px 28px rgba(214, 166, 74, 0.14);
+        }
+
+        .day-button:disabled,
+        .time-button:disabled {
+            opacity: 0.28;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        .day-date {
+            font-size: 22px;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .day-weekday {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+            gap: 12px;
+        }
+
+        .time-button {
+            border-radius: 14px;
+            padding: 14px 12px;
+            font-size: 15px;
+            font-weight: 600;
+            min-height: 54px;
+        }
+
+        .time-button.selected {
+            background: linear-gradient(135deg, #f5e2ab 0%, #d6a64a 100%);
+            border-color: var(--gold);
+            color: #102332;
+            box-shadow: 0 14px 32px rgba(214, 166, 74, 0.26);
+        }
+
+        .form-layout {
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.93rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .field-hint {
+            color: var(--muted-soft);
+            font-size: 0.82rem;
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 14px;
+            color: var(--text);
+            font-size: 0.97rem;
+            font-family: inherit;
+            transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: rgba(214, 221, 228, 0.42);
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--gold);
+            background: rgba(255,255,255,.06);
+            box-shadow: 0 0 0 4px rgba(223, 190, 111, 0.06);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .type-option {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px;
+            padding: 18px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            display: grid;
+            gap: 6px;
+        }
+
+        .type-option:hover {
+            border-color: rgba(223, 190, 111, 0.3);
+        }
+
+        .type-option.selected {
+            background: rgba(223, 190, 111, 0.14);
+            border-color: var(--gold);
+            box-shadow: 0 12px 28px rgba(214, 166, 74, 0.1);
+        }
+
+        .type-option input[type="radio"] {
+            display: none;
+        }
+
+        .type-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .type-text {
+            color: var(--muted-soft);
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }
+
+        .summary {
+            background: linear-gradient(180deg, rgba(223, 190, 111, 0.09), rgba(223, 190, 111, 0.05));
+            border: 1px solid rgba(223, 190, 111, 0.2);
+            border-radius: 18px;
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .summary-value {
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 56px;
+            padding: 0 24px;
+            border-radius: 999px;
+            border: none;
+            font-weight: 700;
+            font-size: 0.98rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f5e2ab 0%, #d6a64a 100%);
+            color: #102332;
+            box-shadow: 0 16px 34px rgba(214, 166, 74, 0.22);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 36px rgba(214, 166, 74, 0.28);
+        }
+
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .alert {
+            padding: 16px 18px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            line-height: 1.65;
+            border: 1px solid transparent;
+        }
+
+        .alert-success {
+            background: rgba(72, 187, 120, 0.1);
+            border-color: rgba(72, 187, 120, 0.28);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: rgba(245, 101, 101, 0.1);
+            border-color: rgba(245, 101, 101, 0.26);
+            color: var(--error);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 22px 18px;
+            color: var(--muted);
+        }
+
+        .spinner {
+            border: 3px solid rgba(223, 190, 111, 0.2);
+            border-top: 3px solid var(--gold);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--muted-soft);
+            padding: 18px 8px 6px;
+            line-height: 1.7;
+        }
+
+        .footer-note {
+            margin-top: 16px;
+            color: var(--muted-soft);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .microcopy {
+            color: var(--muted-soft);
+            font-size: 0.84rem;
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 20px 14px 36px;
+            }
+
+            body::before {
+                background:
+                    radial-gradient(circle at 50% 6%, rgba(223, 190, 111, 0.14), rgba(223, 190, 111, 0.07) 16%, transparent 38%),
+                    radial-gradient(circle at 50% 0%, rgba(223, 190, 111, 0.10), transparent 22%),
+                    url('logo-wellington.png') center -28px / min(122vw, 760px) no-repeat;
+                opacity: 0.06;
+            }
+
+            .step {
+                padding: 22px;
+                border-radius: 22px;
+            }
+
+            .form-row,
+            .type-selector {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar-month-days {
+                grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+            }
+
+            .time-grid {
+                grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+            }
+
+            .summary-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            .summary-value {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <div class="eyebrow">Logoterapia • Clínica Existencial • Online e Presencial</div>
+            <h1>Agende sua sessão</h1>
+            <p class="subtitle">
+                Este espaço foi pensado para tornar o primeiro contato mais simples, acolhedor e objetivo.
+                Você pode solicitar um horário de atendimento com clareza, respiro e organização.
+            </p>
+            <p class="intro-note">
+                Após o envio, sua solicitação será registrada para confirmação do atendimento.
+                O agendamento fica sujeito à validação da disponibilidade final.
+            </p>
+        </section>
+
+        <div id="alert-container"></div>
+
+        <div class="steps">
+            <section class="step active" id="step-date">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <div class="step-heading">
+                        <h2 class="step-title">Escolha a data</h2>
+                        <p class="step-description">Selecione o dia que melhor se ajusta à sua disponibilidade.</p>
+                    </div>
+                </div>
+                <div id="calendar-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Carregando datas disponíveis...</p>
+                </div>
+                <div id="calendar-context" class="calendar-context hidden"></div>
+                <div id="calendar-groups" class="calendar-groups"></div>
+            </section>
+
+            <section class="step" id="step-time">
+                <div class="step-header">
+                    <span class="step-number">2</span>
+                    <div class="step-heading">
+                        <h2 class="step-title">Escolha o horário</h2>
+                        <p class="step-description">Os horários abaixo são exibidos conforme a data selecionada.</p>
+                    </div>
+                </div>
+                <div id="time-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Carregando horários disponíveis...</p>
+                </div>
+                <div id="time-grid" class="time-grid">
+                    <p class="empty-state">Escolha primeiro uma data para visualizar os horários disponíveis.</p>
+                </div>
+            </section>
+
+            <section class="step" id="step-info">
+                <div class="step-header">
+                    <span class="step-number">3</span>
+                    <div class="step-heading">
+                        <h2 class="step-title">Seus dados</h2>
+                        <p class="step-description">Preencha as informações necessárias para registrar sua solicitação.</p>
+                    </div>
+                </div>
+
+                <form id="booking-form" class="form-layout">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nome">Nome completo *</label>
+                            <input type="text" id="nome" required placeholder="Como deseja ser identificado(a)">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input type="email" id="email" required placeholder="seu@email.com">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telefone">Telefone / WhatsApp *</label>
+                        <input type="tel" id="telefone" required placeholder="(84) 99999-9999">
+                        <div class="field-hint">Esse contato pode ser utilizado para confirmação do horário.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de atendimento *</label>
+                        <div class="type-selector">
+                            <label class="type-option selected" id="type-online">
+                                <input type="radio" name="tipo" value="online" checked>
+                                <div class="type-title">🌐 Online</div>
+                                <div class="type-text">Atendimento remoto, com flexibilidade e acolhimento no seu espaço.</div>
+                            </label>
+                            <label class="type-option" id="type-presencial">
+                                <input type="radio" name="tipo" value="presencial">
+                                <div class="type-title">📍 Presencial</div>
+                                <div class="type-text">Atendimento em encontro presencial, conforme disponibilidade da agenda.</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mensagem">Mensagem inicial (opcional)</label>
+                        <textarea id="mensagem" placeholder="Se desejar, escreva brevemente o motivo da busca ou alguma observação importante para o atendimento."></textarea>
+                        <div class="field-hint">Esse espaço é opcional e pode ser usado apenas se fizer sentido para você.</div>
+                    </div>
+                </form>
+            </section>
+
+            <section class="step" id="step-confirm">
+                <div class="step-header">
+                    <span class="step-number">4</span>
+                    <div class="step-heading">
+                        <h2 class="step-title">Confirmar solicitação</h2>
+                        <p class="step-description">Revise as informações abaixo antes de concluir o pedido de agendamento.</p>
+                    </div>
+                </div>
+
+                <div class="summary">
+                    <div class="summary-item">
+                        <span class="summary-label">Data</span>
+                        <span class="summary-value" id="summary-date">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Horário</span>
+                        <span class="summary-value" id="summary-time">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Nome</span>
+                        <span class="summary-value" id="summary-name">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Email</span>
+                        <span class="summary-value" id="summary-email">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Telefone</span>
+                        <span class="summary-value" id="summary-phone">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Modalidade</span>
+                        <span class="summary-value" id="summary-type">-</span>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-primary" id="btn-confirm">
+                    Confirmar solicitação de agendamento
+                </button>
+
+                <p class="footer-note">
+                    Ao enviar, sua solicitação será registrada na agenda interna para análise e confirmação.
+                </p>
+            </section>
+        </div>
+    </div>
+
+    <script src="agenda.js"></script>
+</body>
+</html>
