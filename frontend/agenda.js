@@ -1,6 +1,13 @@
 // Configuração da API
 const API_URL = 'https://agenda-de-atendimento.onrender.com';
 
+// Cache de disponibilidade (15 minutos)
+const cache = {
+    dias: { data: null, timestamp: 0 },
+    slots: new Map(), // Map<data, {slots, timestamp}>
+    TTL: 15 * 60 * 1000 // 15 minutos
+};
+
 // Estado da aplicação
 const state = {
     selectedDate: null,
@@ -36,6 +43,57 @@ const elements = {
     summaryPhone: document.getElementById('summary-phone'),
     summaryType: document.getElementById('summary-type')
 };
+
+// ===== FUNÇÕES DE CACHE =====
+
+function getCachedDays() {
+    const now = Date.now();
+    if (cache.dias.data && (now - cache.dias.timestamp) < cache.TTL) {
+        return cache.dias.data;
+    }
+    return null;
+}
+
+function setCachedDays(data) {
+    cache.dias = {
+        data: data,
+        timestamp: Date.now()
+    };
+}
+
+function getCachedSlots(date) {
+    const cached = cache.slots.get(date);
+    if (cached && (Date.now() - cached.timestamp) < cache.TTL) {
+        return cached.slots;
+    }
+    return null;
+}
+
+function setCachedSlots(date, slots) {
+    cache.slots.set(date, {
+        slots: slots,
+        timestamp: Date.now()
+    });
+}
+
+// ===== ROLAGEM AUTOMÁTICA SUAVE =====
+
+function scrollToStep(step) {
+    // Aguarda um frame para garantir que o DOM foi atualizado
+    requestAnimationFrame(() => {
+        const stepElement = step;
+        const offset = 80; // Offset do topo
+        const elementPosition = stepElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+        });
+    });
+}
+
+// ===== FUNÇÕES DE FORMATAÇÃO =====
 
 function formatDate(dateString) {
     const date = new Date(dateString + 'T00:00:00');
@@ -107,10 +165,38 @@ function showAlert(message, type = 'success') {
 function activateStep(step) {
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
     step.classList.add('active');
+    
+    // Rolar automaticamente para o passo ativo
+    scrollToStep(step);
 }
+
+// ===== PRÉ-CARREGAMENTO INTELIGENTE =====
+
+async function preloadNextDaysSlots() {
+    // Pré-carregar horários dos próximos 3 dias úteis
+    const nextDays = state.availableDays.slice(0, 3);
+    
+    for (const day of nextDays) {
+        if (!getCachedSlots(day.data)) {
+            // Não bloqueia a execução
+            fetchAvailableSlots(day.data, true).catch(() => {});
+        }
+    }
+}
+
+// ===== REQUISIÇÕES OTIMIZADAS =====
 
 async function fetchAvailableDays() {
     try {
+        // Verificar cache primeiro
+        const cachedDays = getCachedDays();
+        if (cachedDays) {
+            state.availableDays = cachedDays;
+            renderCalendar();
+            preloadNextDaysSlots(); // Pré-carregar em background
+            return;
+        }
+
         elements.calendarLoading.classList.remove('hidden');
         elements.calendarGroups.innerHTML = '';
 
@@ -119,7 +205,14 @@ async function fetchAvailableDays() {
 
         const data = await response.json();
         state.availableDays = data.dias;
+        
+        // Salvar no cache
+        setCachedDays(data.dias);
+        
         renderCalendar();
+        
+        // Pré-carregar horários dos primeiros dias
+        preloadNextDaysSlots();
     } catch (error) {
         console.error('Erro:', error);
         showAlert('Não foi possível carregar as datas disponíveis agora. Tente novamente em instantes.', 'error');
@@ -128,22 +221,44 @@ async function fetchAvailableDays() {
     }
 }
 
-async function fetchAvailableSlots(date) {
+async function fetchAvailableSlots(date, silent = false) {
     try {
-        elements.timeLoading.classList.remove('hidden');
-        elements.timeGrid.innerHTML = '';
+        // Verificar cache primeiro
+        const cachedSlots = getCachedSlots(date);
+        if (cachedSlots) {
+            state.availableSlots = cachedSlots;
+            if (!silent) {
+                renderTimeSlots();
+            }
+            return;
+        }
+
+        if (!silent) {
+            elements.timeLoading.classList.remove('hidden');
+            elements.timeGrid.innerHTML = '';
+        }
 
         const response = await fetch(`${API_URL}/disponibilidade/${date}`);
         if (!response.ok) throw new Error('Erro ao carregar horários.');
 
         const data = await response.json();
         state.availableSlots = data.slots;
-        renderTimeSlots();
+        
+        // Salvar no cache
+        setCachedSlots(date, data.slots);
+        
+        if (!silent) {
+            renderTimeSlots();
+        }
     } catch (error) {
-        console.error('Erro:', error);
-        showAlert('Não foi possível carregar os horários para esta data. Tente novamente.', 'error');
+        if (!silent) {
+            console.error('Erro:', error);
+            showAlert('Não foi possível carregar os horários para esta data. Tente novamente.', 'error');
+        }
     } finally {
-        elements.timeLoading.classList.add('hidden');
+        if (!silent) {
+            elements.timeLoading.classList.add('hidden');
+        }
     }
 }
 
@@ -174,6 +289,10 @@ async function submitBooking() {
             throw new Error(result.detail || 'Erro ao registrar o agendamento.');
         }
 
+        // Limpar cache da data agendada
+        cache.slots.delete(state.selectedDate);
+        cache.dias.data = null;
+
         showAlert('✅ Solicitação enviada com sucesso. O horário foi registrado e poderá ser confirmado em seguida.', 'success');
 
         setTimeout(() => {
@@ -187,6 +306,8 @@ async function submitBooking() {
         elements.btnConfirm.textContent = 'Confirmar solicitação de agendamento';
     }
 }
+
+// ===== RENDERIZAÇÃO OTIMIZADA =====
 
 function renderCalendar() {
     elements.calendarGroups.innerHTML = '';
@@ -203,6 +324,9 @@ function renderCalendar() {
 
     const monthEntries = Object.entries(groupedByMonth);
     const showInternalMonthLabel = monthEntries.length > 1;
+
+    // Usar DocumentFragment para melhor performance
+    const fragment = document.createDocumentFragment();
 
     monthEntries.forEach(([monthLabel, days]) => {
         const monthBlock = document.createElement('div');
@@ -237,8 +361,10 @@ function renderCalendar() {
         });
 
         monthBlock.appendChild(daysGrid);
-        elements.calendarGroups.appendChild(monthBlock);
+        fragment.appendChild(monthBlock);
     });
+
+    elements.calendarGroups.appendChild(fragment);
 }
 
 function renderTimeSlots() {
@@ -248,6 +374,9 @@ function renderTimeSlots() {
         elements.timeGrid.innerHTML = '<p class="empty-state">Nenhum horário disponível para esta data. Escolha outro dia para continuar.</p>';
         return;
     }
+
+    // Usar DocumentFragment para melhor performance
+    const fragment = document.createDocumentFragment();
 
     state.availableSlots.forEach(slot => {
         const timeButton = document.createElement('button');
@@ -260,9 +389,13 @@ function renderTimeSlots() {
             timeButton.addEventListener('click', () => selectTime(slot.horario, timeButton));
         }
 
-        elements.timeGrid.appendChild(timeButton);
+        fragment.appendChild(timeButton);
     });
+
+    elements.timeGrid.appendChild(fragment);
 }
+
+// ===== SELEÇÃO COM ANIMAÇÃO =====
 
 function selectDate(date, button) {
     state.selectedDate = date;
@@ -319,7 +452,12 @@ function resetForm() {
 
     updateSummary();
     fetchAvailableDays();
+    
+    // Rolar para o topo suavemente
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// ===== EVENT LISTENERS =====
 
 document.querySelectorAll('.type-option').forEach(option => {
     option.addEventListener('click', function () {
@@ -334,13 +472,18 @@ elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
 });
 
+// Debounce para inputs
+let inputTimeout;
 [elements.nome, elements.email, elements.telefone, elements.mensagem].forEach(input => {
     input.addEventListener('input', () => {
-        updateSummary();
+        clearTimeout(inputTimeout);
+        inputTimeout = setTimeout(() => {
+            updateSummary();
 
-        if (elements.form.checkValidity() && state.selectedDate && state.selectedTime) {
-            activateStep(elements.stepConfirm);
-        }
+            if (elements.form.checkValidity() && state.selectedDate && state.selectedTime) {
+                activateStep(elements.stepConfirm);
+            }
+        }, 300);
     });
 
     input.addEventListener('blur', () => {
@@ -370,6 +513,7 @@ elements.btnConfirm.addEventListener('click', () => {
     submitBooking();
 });
 
+// Máscara de telefone otimizada
 elements.telefone.addEventListener('input', (e) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 11) value = value.substring(0, 11);
@@ -384,8 +528,27 @@ elements.telefone.addEventListener('input', (e) => {
     updateSummary();
 });
 
+// ===== INICIALIZAÇÃO =====
+
 document.addEventListener('DOMContentLoaded', () => {
     syncTypeSelection();
     updateSummary();
     fetchAvailableDays();
 });
+
+// Limpar cache antigo a cada 30 minutos
+setInterval(() => {
+    const now = Date.now();
+    
+    // Limpar cache de dias
+    if (cache.dias.timestamp && (now - cache.dias.timestamp) > cache.TTL) {
+        cache.dias.data = null;
+    }
+    
+    // Limpar cache de slots
+    for (const [date, cached] of cache.slots.entries()) {
+        if ((now - cached.timestamp) > cache.TTL) {
+            cache.slots.delete(date);
+        }
+    }
+}, 30 * 60 * 1000);
